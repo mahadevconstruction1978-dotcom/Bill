@@ -356,7 +356,7 @@ if (viewBranchSelector) {
         loadingDiv.style.display = "block";
 
         try {
-            const response = await fetch(`http://localhost:5000/api/get-invoices?branch=${selectedBranch}`);
+            const response = await fetch(`https://backrnd-8n8g.onrender.com/api/get-invoices?branch=${selectedBranch}`);
             const invoices = await response.json();
 
             loadingDiv.style.display = "none";
@@ -457,7 +457,7 @@ async function saveToDatabase() {
       };
 
       // 4. SEND TO SERVER
-      const res = await fetch('http://localhost:5000/api/save-invoice', {
+      const res = await fetch('https://backrnd-8n8g.onrender.com/api/save-invoice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
