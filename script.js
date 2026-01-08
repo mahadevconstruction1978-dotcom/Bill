@@ -483,3 +483,45 @@ async function saveToDatabase() {
       alert("Failed to connect to server.");
   }
 }
+/* --- PRINT LOGIC --- */
+function directPrint() {
+    // 1. Get the invoice element
+    const element = document.querySelector("#preview .page");
+    if (!element) return;
+
+    // 2. Create a hidden iframe if it doesn't exist
+    let printFrame = document.getElementById("printFrame");
+    if (!printFrame) {
+        printFrame = document.createElement("iframe");
+        printFrame.id = "printFrame";
+        printFrame.style.position = "fixed";
+        printFrame.style.right = "0";
+        printFrame.style.bottom = "0";
+        printFrame.style.width = "0";
+        printFrame.style.height = "0";
+        printFrame.style.border = "0";
+        document.body.appendChild(printFrame);
+    }
+
+    const doc = printFrame.contentWindow.document;
+    
+    // 3. Write the HTML and copy ALL styles from the main page
+    doc.open();
+    doc.write('<html><head><title>Print Invoice</title>');
+    
+    // Copy all <style> and <link> tags so the invoice looks correct
+    document.querySelectorAll('style, link[rel="stylesheet"]').forEach(style => {
+        doc.write(style.outerHTML);
+    });
+
+    doc.write('</head><body style="margin:0; padding:0;">');
+    doc.write(element.outerHTML); // Directly copy the .page div
+    doc.write('</body></html>');
+    doc.close();
+
+    // 4. Wait for images (backgrounds) to load before printing
+    printFrame.contentWindow.onload = function() {
+        printFrame.contentWindow.focus();
+        printFrame.contentWindow.print();
+    };
+}

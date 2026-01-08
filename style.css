@@ -177,3 +177,27 @@ body {
   font-size: 18px;
   font-weight: bold;
 }
+@media print {
+    /* Forces background images and colors to appear */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+
+    /* Ensure the page fits A4 and has no extra margins */
+    @page {
+        size: A4;
+        margin: 0;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Hide everything except the invoice if you are printing the main page */
+    .no-print, #items, #addItem, #bgSelector, button {
+        display: none !important;
+    }
+}
