@@ -20,14 +20,14 @@ const bankData = {
     }
 };
 const branchData = {
-    "budwar.jpg": {
+    "budwar.jpeg": {
         stateName: "Uttar Pradesh",   // Added Name
         stateCode: "09",              // Added Code
         gstin: "09AMLPC5798A1ZW",
-        address: "H.N.151,BUDWAR LALITPUR, UTTAR PRADESH 284403", 
+        address: "H.N.151,BUDWAR LALITPUR, UTTAR PRADESH 284403",
         phone: "9811503806, 7974184033"
     },
-    "niwari.jpg": {
+    "niwari.jpeg": {
         stateName: "Madhya Pradesh",  // Added Name
         stateCode: "23",              // Added Code
         gstin: "23AMLPC5798A1Z6",     // REMEMBER: Update this with real MP GSTIN
@@ -35,7 +35,7 @@ const branchData = {
         phone: "9811503806, 7974184033"
     }
 };
-let currentBackground = "budwar.jpg";
+let currentBackground = "budwar.jpeg";
 /* --- HELPER FUNCTIONS --- */
 function formatDate(inputDate) {
     if (!inputDate) return "";
@@ -58,15 +58,15 @@ let currentTotals = {
 };
 /* Number to Words (Indian System) */
 function numToWords(n) {
-    const a = ["","ONE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT","NINE","TEN","ELEVEN","TWELVE","THIRTEEN","FOURTEEN","FIFTEEN","SIXTEEN","SEVENTEEN","EIGHTEEN","NINETEEN"];
-    const b = ["","","TWENTY","THIRTY","FORTY","FIFTY","SIXTY","SEVENTY","EIGHTY","NINETY"];
+    const a = ["", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTEEN", "NINETEEN"];
+    const b = ["", "", "TWENTY", "THIRTY", "FORTY", "FIFTY", "SIXTY", "SEVENTY", "EIGHTY", "NINETY"];
 
-    if (n === 0) return ""; 
+    if (n === 0) return "";
     if (n < 20) return a[n];
-    if (n < 100) return b[Math.floor(n/10)] + (n%10 !== 0 ? " " + a[n%10] : "");
-    if (n < 1000) return a[Math.floor(n/100)] + " HUNDRED " + numToWords(n%100);
-    if (n < 100000) return numToWords(Math.floor(n/1000)) + " THOUSAND " + numToWords(n%1000);
-    return numToWords(Math.floor(n/100000)) + " LAKH " + numToWords(n%100000);
+    if (n < 100) return b[Math.floor(n / 10)] + (n % 10 !== 0 ? " " + a[n % 10] : "");
+    if (n < 1000) return a[Math.floor(n / 100)] + " HUNDRED " + numToWords(n % 100);
+    if (n < 100000) return numToWords(Math.floor(n / 1000)) + " THOUSAND " + numToWords(n % 1000);
+    return numToWords(Math.floor(n / 100000)) + " LAKH " + numToWords(n % 100000);
 }
 
 function words(n) {
@@ -87,12 +87,10 @@ function words(n) {
 let itemCount = 0;
 
 function addItem() {
-    if (itemCount >= 3) return;
-
+    // 1. Removed the item limit. Add as many as needed!
     const row = document.createElement("div");
     row.className = "item-row";
-    
-    // HTML for the Row (Includes the Unit Select)
+
     row.innerHTML = `
         <input placeholder="Description">
         <input placeholder="HSN">
@@ -113,94 +111,157 @@ function addItem() {
     `;
     itemsDiv.appendChild(row);
 
-    // Add listeners to Inputs AND Selects
     row.querySelectorAll("input, select").forEach(i =>
         i.addEventListener("input", render)
     );
 
     itemCount++;
-    if (itemCount >= 3) addBtn.disabled = true;
 }
 
 function render() {
     const rows = [...document.querySelectorAll(".item-row")];
-
-    /* --- 1. GET CURRENT BRANCH DETAILS --- */
-    // Uses the global 'currentBackground' variable to find the right data
     const currentBranch = branchData[currentBackground] || branchData["budwar.jpg"];
+    const val = (id) => document.getElementById(id)?.value || "";
 
     let goodsTotal = 0;
     let totalCGST = 0, totalSGST = 0, totalIGST = 0;
 
-    /* --- 2. CALCULATE GOODS --- */
-    const goodsRows = rows.map((r, i) => {
-        const [d, h, q, rt] = r.querySelectorAll("input");
+    // --- 1. PRE-CALCULATE ALL ITEMS ---
+    const processedItems = rows.map((r, i) => {
+        const [d, h, q, rt, cg, sg, ig] = r.querySelectorAll("input");
         const unitSelect = r.querySelector("select");
-        const unit = unitSelect ? unitSelect.value : "";
+
+        const desc = d.value;
+        const hsn = h.value;
         const qty = +q.value || 0;
+        const unit = unitSelect ? unitSelect.value : "";
         const rate = +rt.value || 0;
         const amt = qty * rate;
 
+        const cgstP = +cg?.value || 0;
+        const sgstP = +sg?.value || 0;
+        const igstP = +ig?.value || 0;
+
+        const cgstA = amt * cgstP / 100;
+        const sgstA = amt * sgstP / 100;
+        const igstA = amt * igstP / 100;
+
         goodsTotal += amt;
-
-        return `
-          <tr>
-            <td>${i+1}</td>
-            <td class="desc">${d.value}</td>
-            <td>${h.value}</td>
-            <td>${qty}</td>
-            <td>${unit}</td> 
-            <td>${rate}</td>
-            <td>${amt.toFixed(2)}</td>
-          </tr>`;
-    }).join("");
-
-    /* --- 3. CALCULATE TAXES --- */
-    const gstRows = rows.map((r, i) => {
-        const [d,, q, rt, cg, sg, ig] = r.querySelectorAll("input");
-        const taxable = (+q.value || 0) * (+rt.value || 0);
-        
-        const cgstP = +cg.value || 0;
-        const sgstP = +sg.value || 0;
-        const igstP = +ig.value || 0;
-
-        const cgstA = taxable * cgstP / 100;
-        const sgstA = taxable * sgstP / 100;
-        const igstA = taxable * igstP / 100;
-
         totalCGST += cgstA;
         totalSGST += sgstA;
         totalIGST += igstA;
 
-        return `
-          <tr>
-            <td>${i+1}</td>
-            <td class="desc">${d.value}</td>
-            <td>${taxable.toFixed(2)}</td>
-            <td>${cgstP}%</td>
-            <td>${cgstA.toFixed(2)}</td>
-            <td>${sgstP}%</td>
-            <td>${sgstA.toFixed(2)}</td>
-            <td>${igstP}%</td>
-            <td>${igstA.toFixed(2)}</td>
-          </tr>`;
-    }).join("");
+        return { i: i + 1, desc, hsn, qty, unit, rate, amt, cgstP, cgstA, sgstP, sgstA, igstP, igstA };
+    });
 
     const overallGST = totalCGST + totalSGST + totalIGST;
     const grandTotal = goodsTotal + overallGST;
+
     currentTotals.taxable = goodsTotal;
-    currentTotals.totalGST = totalCGST + totalSGST + totalIGST;
+    currentTotals.totalGST = overallGST;
     currentTotals.grandTotal = grandTotal;
 
-    /* --- 4. UPDATE PREVIEW HTML --- */
-    const val = (id) => document.getElementById(id)?.value || "";
+    // --- 2. BUILD CONTENT BLOCKS ---
+    // We break the invoice into "blocks" with a height cost.
+    const blocks = [];
 
-    preview.innerHTML = `
-    <div class="page" style="background-image: url('${currentBackground}');">
-        <div class="invoice">
-            
-            <div id="heading" class="center bold">TAX INVOICE</div><br>
+    // A. Goods Table Start
+    const goodsHeaderBlock = { html: `<table class="table"><tr><th>S.No</th><th>Description</th><th>HSN</th><th>Qty</th><th>Unit</th><th>Rate</th><th>Amount</th></tr>`, cost: 2, type: 'open' };
+    blocks.push(goodsHeaderBlock);
 
+    // B. Goods Rows
+    processedItems.forEach(item => {
+        blocks.push({ html: `<tr><td>${item.i}</td><td class="desc">${item.desc}</td><td>${item.hsn}</td><td>${item.qty}</td><td>${item.unit}</td><td>${item.rate}</td><td>${item.amt.toFixed(2)}</td></tr>`, cost: 1, type: 'row' });
+    });
+
+    // C. Goods Table End
+    blocks.push({ html: `<tr class="bold"><td colspan="6" class="right">TOTAL</td><td>${goodsTotal.toFixed(2)}</td></tr></table>`, cost: 2, type: 'close' });
+
+    // Spacer
+    blocks.push({ html: `<br>`, cost: 1, type: 'spacer' });
+
+    // D. GST Table Start
+    const gstHeaderBlock = { html: `<table class="table"><tr><th>S.No</th><th>Description</th><th>Taxable</th><th>CGST%</th><th>CGST Amt</th><th>SGST%</th><th>SGST Amt</th><th>IGST%</th><th>IGST Amt</th></tr>`, cost: 2, type: 'open' };
+    blocks.push(gstHeaderBlock);
+
+    // E. GST Rows
+    processedItems.forEach(item => {
+        blocks.push({ html: `<tr><td>${item.i}</td><td class="desc">${item.desc}</td><td>${item.amt.toFixed(2)}</td><td>${item.cgstP}%</td><td>${item.cgstA.toFixed(2)}</td><td>${item.sgstP}%</td><td>${item.sgstA.toFixed(2)}</td><td>${item.igstP}%</td><td>${item.igstA.toFixed(2)}</td></tr>`, cost: 1, type: 'row' });
+    });
+
+    // F. GST Table End
+    blocks.push({ html: `<tr class="bold"><td colspan="4" class="right">TOTAL GST</td><td>${totalCGST.toFixed(2)}</td><td></td><td>${totalSGST.toFixed(2)}</td><td></td><td>${totalIGST.toFixed(2)}</td></tr><tr class="bold"><td colspan="8" class="right">OVERALL GST TOTAL</td><td>${overallGST.toFixed(2)}</td></tr></table>`, cost: 3, type: 'close' });
+
+    // G. Final Signature Footer
+    blocks.push({
+        html: `
+        <div class="box bold" style="margin-top: 10px;">Amount in Words: INR ${words(grandTotal)}</div>
+        <div class="box right bold">GRAND TOTAL ₹${grandTotal.toFixed(2)}</div>
+        <div class="row">
+            <div class="box"><b>Bank: ${val('bankName')}<br>A/C No: ${val('AccountNumber')}<br>IFSC: ${val('Ifsc')}<br>Branch: ${val('branch')}</b></div>
+            <div class="box right">For MAHADEV CONSTRUCTION<br><br><br>Authorised signature.</div>
+        </div>
+    `, cost: 8, type: 'footer'
+    });
+
+    // --- 3. DISTRIBUTE BLOCKS INTO PAGES ---
+    const MAX_COST_PER_PAGE = 28; // 💡 Change this to control how much fits on one page (higher = more items per page)
+
+    let pages = [];
+    let currentPage = [];
+    let currentCost = 0;
+    let openTables = [];
+
+    for (let i = 0; i < blocks.length; i++) {
+        let block = blocks[i];
+
+        // If adding this block overflows the page
+        if (currentCost + block.cost > MAX_COST_PER_PAGE && currentCost > 0) {
+
+            // If we are in the middle of a table, close it safely
+            if (openTables.length > 0) {
+                currentPage.push({ html: `</table>`, cost: 0 });
+            }
+
+            pages.push(currentPage); // Save current page
+
+            // Reset for the new page
+            currentPage = [];
+            currentCost = 0;
+
+            // Re-open the table at the top of the new page
+            if (openTables.length > 0) {
+                let lastOpenTable = openTables[openTables.length - 1];
+                currentPage.push(lastOpenTable);
+                currentCost += lastOpenTable.cost;
+            }
+        }
+
+        // Track if a table is opened or closed
+        if (block.type === 'open') openTables.push(block);
+        if (block.type === 'close') openTables.pop();
+
+        currentPage.push(block);
+        currentCost += block.cost;
+    }
+
+    if (currentPage.length > 0) pages.push(currentPage);
+
+    // --- 4. RENDER HTML FOR ALL PAGES ---
+    // --- 4. RENDER HTML FOR ALL PAGES ---
+    const totalPages = pages.length;
+    let finalPreviewHTML = "";
+
+    pages.forEach((pageBlocks, index) => {
+        const pageNum = index + 1;
+        const isLastPage = (pageNum === totalPages);
+
+        // Standard Header for EVERY page
+        const standardHeader = `
+            <div id="heading" class="center bold" style="position: relative;">
+                TAX INVOICE 
+                <span style="position: absolute; right: 0; font-size: 12px; top: 0;">Page ${pageNum} of ${totalPages}</span>
+            </div><br>
             <div class="row">
                 <div class="box">
                     <b>MAHADEV CONSTRUCTION</b><br>
@@ -211,7 +272,6 @@ function render() {
                     PAN: AMLPC5798A<br>
                     <b>Phone no.: ${currentBranch.phone}</b>
                 </div>
-
                 <div class="box">
                     <b>${toUpper(val('buyerName'))}</b><br>
                     ${toUpper(val('buyerAddress'))}<br>
@@ -219,68 +279,44 @@ function render() {
                     GSTIN: ${toUpper(val('buyerGST'))}
                 </div>
             </div>
-
             <div class="row">
                 <div class="box">Invoice No: ${val('invoiceNo')}</div>
                 <div class="box right">Date: ${formatDate(val('invoiceDate'))}</div>
             </div>
+        `;
 
-            <table class="table">
-                <tr>
-                    <th>S.No</th><th>Description</th><th>HSN</th>
-                    <th>Qty</th><th>Unit</th><th>Rate</th><th>Amount</th>
-                </tr>
-                ${goodsRows}
-                <tr class="bold">
-                    <td colspan="6" class="right">TOTAL</td>
-                    <td>${goodsTotal.toFixed(2)}</td>
-                </tr>
-            </table>
+        // Extract the raw HTML from the blocks for this specific page
+        const pageContent = pageBlocks.map(b => b.html).join("");
 
-            <table class="table">
-                <tr>
-                    <th>S.No</th><th>Description</th><th>Taxable</th>
-                    <th>CGST%</th><th>CGST Amt</th>
-                    <th>SGST%</th><th>SGST Amt</th>
-                    <th>IGST%</th><th>IGST Amt</th>
-                </tr>
-                ${gstRows}
-                <tr class="bold">
-                    <td colspan="4" class="right">TOTAL GST</td>
-                    <td>${totalCGST.toFixed(2)}</td>
-                    <td></td>
-                    <td>${totalSGST.toFixed(2)}</td>
-                    <td></td>
-                    <td>${totalIGST.toFixed(2)}</td>
-                </tr>
-                <tr class="bold">
-                    <td colspan="8" class="right">OVERALL GST TOTAL</td>
-                    <td>${overallGST.toFixed(2)}</td>
-                </tr>
-            </table>
+        // Add P.T.O only if it's NOT the last page
+        const ptoHTML = !isLastPage ? `<div class="bold right" style="margin-top: 15px;">P.T.O. (Continued on next page...)</div>` : "";
 
-            <div class="box bold">
-                Amount in Words: INR ${words(grandTotal)}
+        // 💡 NEW: Outside Footer Note (Only appears on the LAST page)
+        const outsideFooterHTML = isLastPage ? `
+            <div style="position: absolute; bottom: 70px; right: 40px; text-align: right; font-weight: bold; font-size: 16px; color: #000;">
+                Thanks<br>
+                Yours Faithfully<br>
+                Mahadev Construction
             </div>
+        ` : "";
 
-            <div class="box right bold">
-                GRAND TOTAL ₹${grandTotal.toFixed(2)}
-            </div>
+        // 💡 FIX: Only add a page break if it is NOT the last page to prevent blank pages
+        const pageBreakCSS = !isLastPage ? `page-break-after: always;` : ``;
 
-            <div class="row">
-                <div class="box">
-                    <b>Bank:   ${val('bankName')}<br>
-                    A/C No: ${val('AccountNumber')}<br>
-                    IFSC:   ${val('Ifsc')}<br>
-                    Branch: ${val('branch')}</b>
+        finalPreviewHTML += `
+            <div class="page" style="background-image: url('${currentBackground}'); background-size: cover; ${pageBreakCSS} position: relative; min-height: 297mm; box-sizing: border-box;">
+                <div class="invoice">
+                    ${standardHeader}
+                    ${pageContent}
+                    ${ptoHTML}
                 </div>
-                <div class="box right">
-                    For MAHADEV CONSTRUCTION<br><BR><BR>
-                    Authorised signature.
-                </div>
+                ${outsideFooterHTML}
             </div>
-        </div>
-    </div>`;
+        `;
+    });
+
+    // Inject everything into the preview window
+    preview.innerHTML = finalPreviewHTML;
 }
 /* --- EVENT LISTENERS --- */
 // 1. Listen for typing in main inputs
@@ -289,8 +325,8 @@ document.querySelectorAll("input, textarea").forEach(e =>
 );
 
 // 2. Listen for Account Selection
-if(accountSelector) {
-    accountSelector.addEventListener("change", function() {
+if (accountSelector) {
+    accountSelector.addEventListener("change", function () {
         const selected = this.value;
         const bName = document.getElementById("bankName");
         const bAc = document.getElementById("AccountNumber");
@@ -308,30 +344,36 @@ if(accountSelector) {
             bIfsc.value = "";
             bBranch.value = "";
         }
-        render(); 
+        render();
     });
 }
 
 // 3. Download PDF Listener
+// Change document.querySelector("#preview .page") to document.getElementById("preview")
+// 3. Download PDF Listener
 const downloadBtn = document.getElementById("downloadBtn");
-if(downloadBtn) {
+if (downloadBtn) {
     downloadBtn.addEventListener("click", () => {
-        const element = document.querySelector("#preview .page");
+        const element = document.getElementById("preview");
         const opt = {
-            margin:       0, 
-            filename:     'Invoice_' + new Date().getTime() + '.pdf',
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, scrollY: 0 },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            margin: 0,
+            filename: 'Invoice_' + new Date().getTime() + '.pdf',
+            image: { type: 'jpeg', quality: 1.0 }, // 1.0 is max quality
+            html2canvas: {
+                scale: 4, // 💡 CRANKED UP TO 4 FOR SUPER HIGH RESOLUTION
+                useCORS: true, // Ensures background images load sharply
+                letterRendering: true // Smooths out text fonts
+            },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
         html2pdf().set(opt).from(element).save();
     });
 }
 const bgSelector = document.getElementById("bgSelector");
 if (bgSelector) {
-    bgSelector.addEventListener("change", function() {
+    bgSelector.addEventListener("change", function () {
         currentBackground = this.value;
-        render(); 
+        render();
     });
 }
 
@@ -347,10 +389,10 @@ const billsTableBody = document.querySelector("#billsTable tbody");
 const loadingDiv = document.getElementById("loading");
 
 if (viewBranchSelector) {
-    viewBranchSelector.addEventListener("change", async function() {
+    viewBranchSelector.addEventListener("change", async function () {
         const selectedBranch = this.value;
         billsTableBody.innerHTML = "";
-        
+
         if (!selectedBranch) return;
 
         loadingDiv.style.display = "block";
@@ -391,105 +433,104 @@ if (viewBranchSelector) {
     });
 }
 async function saveToDatabase() {
-  const loader = document.getElementById("fullScreenLoader");
-  loader.style.display = "flex";
+    const loader = document.getElementById("fullScreenLoader");
+    loader.style.display = "flex";
 
-  try {
-      // 1. GET TOTALS DIRECTLY FROM GLOBAL VARIABLE (No Calculation!)
-      const { taxable, totalGST, grandTotal } = currentTotals;
+    try {
+        // 1. GET TOTALS DIRECTLY FROM GLOBAL VARIABLE (No Calculation!)
+        const { taxable, totalGST, grandTotal } = currentTotals;
 
-      // 2. PREPARE ITEMS DATA (Only structure, no math needed for totals)
-      const rows = [...document.querySelectorAll(".item-row")];
-      
-      const currentBranch = branchData[document.getElementById('bgSelector').value] || branchData["budwar.jpg"];
-      const buyerGSTVal = document.getElementById("buyerGST").value.trim();
-      const buyerStateCode = buyerGSTVal.substring(0, 2); 
-      const isLocal = (buyerStateCode === currentBranch.stateCode) && (buyerStateCode.length === 2);
+        // 2. PREPARE ITEMS DATA (Only structure, no math needed for totals)
+        const rows = [...document.querySelectorAll(".item-row")];
 
-      const itemsData = rows.map(r => {
-        const inputs = r.querySelectorAll("input"); 
-        const unitSelect = r.querySelector(".unit-select");
-        const gstSelect = r.querySelector(".gst-select"); 
+        const currentBranch = branchData[document.getElementById('bgSelector').value] || branchData["budwar.jpg"];
+        const buyerGSTVal = document.getElementById("buyerGST").value.trim();
+        const buyerStateCode = buyerGSTVal.substring(0, 2);
+        const isLocal = (buyerStateCode === currentBranch.stateCode) && (buyerStateCode.length === 2);
 
-        const qty = parseFloat(inputs[2].value) || 0;
-        const rate = parseFloat(inputs[3].value) || 0;
-        const gstPercent = parseFloat(gstSelect ? gstSelect.value : 0) || 0;
-        const taxableAmt = qty * rate;
+        const itemsData = rows.map(r => {
+            const inputs = r.querySelectorAll("input");
+            const unitSelect = r.querySelector(".unit-select");
+            const gstSelect = r.querySelector(".gst-select");
 
-        // Simple split logic just for the item record
-        let cgstRate = 0, sgstRate = 0, igstRate = 0;
-        if (isLocal) {
-            cgstRate = gstPercent / 2;
-            sgstRate = gstPercent / 2;
+            const qty = parseFloat(inputs[2].value) || 0;
+            const rate = parseFloat(inputs[3].value) || 0;
+            const gstPercent = parseFloat(gstSelect ? gstSelect.value : 0) || 0;
+            const taxableAmt = qty * rate;
+
+            // Simple split logic just for the item record
+            let cgstRate = 0, sgstRate = 0, igstRate = 0;
+            if (isLocal) {
+                cgstRate = gstPercent / 2;
+                sgstRate = gstPercent / 2;
+            } else {
+                igstRate = gstPercent;
+            }
+
+            return {
+                desc: inputs[0].value,
+                hsn: inputs[1].value,
+                qty: qty,
+                unit: unitSelect ? unitSelect.value : "",
+                rate: rate,
+                amount: taxableAmt, // Item Taxable Value
+                cgst: cgstRate,
+                sgst: sgstRate,
+                igst: igstRate
+            };
+        });
+
+        // 3. PREPARE PAYLOAD
+        const payload = {
+            invoiceNo: document.getElementById('invoiceNo').value,
+            invoiceDate: document.getElementById('invoiceDate').value,
+            sellerBranch: document.getElementById('bgSelector').value,
+            buyerName: document.getElementById('buyerName').value,
+            buyerGST: document.getElementById('buyerGST').value,
+            buyerAddress: document.getElementById('buyerAddress').value,
+            buyerState: document.getElementById('StateCode2').value,
+
+            // DIRECTLY USING THE GLOBALS
+            taxableAmount: parseFloat(taxable.toFixed(2)),
+            totalGST: parseFloat(totalGST.toFixed(2)),
+            grandTotal: parseFloat(grandTotal.toFixed(2)),
+
+            items: itemsData
+        };
+
+        // 4. SEND TO SERVER
+        const res = await fetch('https://backrnd-8n8g.onrender.com/api/save-invoice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        loader.style.display = "none";
+
+        if (data.success) {
+            alert("Saved Successfully!");
+            // Refresh view if needed
+            const viewBranchSelector = document.getElementById("viewBranchSelector");
+            if (viewBranchSelector && viewBranchSelector.value === payload.sellerBranch) {
+                viewBranchSelector.dispatchEvent(new Event('change'));
+            }
         } else {
-            igstRate = gstPercent;
+            alert("Error saving: " + data.error);
         }
 
-        return {
-          desc: inputs[0].value,
-          hsn: inputs[1].value,
-          qty: qty,
-          unit: unitSelect ? unitSelect.value : "",
-          rate: rate,
-          amount: taxableAmt, // Item Taxable Value
-          cgst: cgstRate, 
-          sgst: sgstRate, 
-          igst: igstRate
-        };
-      });
-
-      // 3. PREPARE PAYLOAD
-      const payload = {
-        invoiceNo: document.getElementById('invoiceNo').value,
-        invoiceDate: document.getElementById('invoiceDate').value,
-        sellerBranch: document.getElementById('bgSelector').value, 
-        buyerName: document.getElementById('buyerName').value,
-        buyerGST: document.getElementById('buyerGST').value,
-        buyerAddress: document.getElementById('buyerAddress').value,
-        buyerState: document.getElementById('StateCode2').value,
-        
-        // DIRECTLY USING THE GLOBALS
-        taxableAmount: parseFloat(taxable.toFixed(2)),
-        totalGST: parseFloat(totalGST.toFixed(2)),
-        grandTotal: parseFloat(grandTotal.toFixed(2)), 
-        
-        items: itemsData
-      };
-
-      // 4. SEND TO SERVER
-      const res = await fetch('https://backrnd-8n8g.onrender.com/api/save-invoice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json();
-      loader.style.display = "none";
-
-      if(data.success) {
-          alert("Saved Successfully!");
-          // Refresh view if needed
-          const viewBranchSelector = document.getElementById("viewBranchSelector");
-          if(viewBranchSelector && viewBranchSelector.value === payload.sellerBranch) {
-              viewBranchSelector.dispatchEvent(new Event('change'));
-          }
-      } else {
-          alert("Error saving: " + data.error);
-      }
-
-  } catch (err) {
-      console.error(err);
-      loader.style.display = "none";
-      alert("Failed to connect to server.");
-  }
+    } catch (err) {
+        console.error(err);
+        loader.style.display = "none";
+        alert("Failed to connect to server.");
+    }
 }
 /* --- PRINT LOGIC --- */
 function directPrint() {
-    // 1. Get the invoice element
-    const element = document.querySelector("#preview .page");
-    if (!element) return;
+    // 1. Get the ENTIRE preview area, not just the first page
+    const previewContent = document.getElementById("preview").innerHTML; // <--- CHANGED HERE
+    if (!previewContent) return;
 
-    // 2. Create a hidden iframe if it doesn't exist
     let printFrame = document.getElementById("printFrame");
     if (!printFrame) {
         printFrame = document.createElement("iframe");
@@ -504,23 +545,20 @@ function directPrint() {
     }
 
     const doc = printFrame.contentWindow.document;
-    
-    // 3. Write the HTML and copy ALL styles from the main page
+
     doc.open();
     doc.write('<html><head><title>Print Invoice</title>');
-    
-    // Copy all <style> and <link> tags so the invoice looks correct
+
     document.querySelectorAll('style, link[rel="stylesheet"]').forEach(style => {
         doc.write(style.outerHTML);
     });
 
     doc.write('</head><body style="margin:0; padding:0;">');
-    doc.write(element.outerHTML); // Directly copy the .page div
+    doc.write(previewContent); // <--- CHANGED HERE
     doc.write('</body></html>');
     doc.close();
 
-    // 4. Wait for images (backgrounds) to load before printing
-    printFrame.contentWindow.onload = function() {
+    printFrame.contentWindow.onload = function () {
         printFrame.contentWindow.focus();
         printFrame.contentWindow.print();
     };
