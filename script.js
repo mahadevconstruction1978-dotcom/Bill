@@ -421,18 +421,24 @@ if (accountSelector) {
 // 3. Download PDF Listener
 // Change document.querySelector("#preview .page") to document.getElementById("preview")
 // 3. Download PDF Listener
+// 3. Download PDF Listener
 const downloadBtn = document.getElementById("downloadBtn");
 if (downloadBtn) {
     downloadBtn.addEventListener("click", () => {
         const element = document.getElementById("preview");
+
         const opt = {
             margin: 0,
             filename: 'Invoice_' + new Date().getTime() + '.pdf',
-            image: { type: 'jpeg', quality: 1.0 }, // 1.0 is max quality
+            image: { type: 'jpeg', quality: 1.0 },
+            // Tell the PDF generator to look for your .page classes!
+            pagebreak: { mode: 'css', avoid: 'tr' },
             html2canvas: {
-                scale: 4, // 💡 CRANKED UP TO 4 FOR SUPER HIGH RESOLUTION
-                useCORS: true, // Ensures background images load sharply
-                letterRendering: true // Smooths out text fonts
+                scale: 3, // Lowered slightly from 4 so multi-page doesn't crash browser memory
+                useCORS: true,
+                letterRendering: true,
+                scrollY: 0, // Starts capture from the absolute top
+                windowHeight: element.scrollHeight // Captures the full hidden length of all pages
             },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
@@ -590,16 +596,16 @@ async function saveToDatabase() {
     }
 }
 /* --- PRINT LOGIC --- */
+/* --- PRINT LOGIC --- */
 function directPrint() {
-    // 1. Get the ENTIRE preview area, not just the first page
-    const previewContent = document.getElementById("preview").innerHTML; // <--- CHANGED HERE
+    const previewContent = document.getElementById("preview").innerHTML;
     if (!previewContent) return;
 
     let printFrame = document.getElementById("printFrame");
     if (!printFrame) {
         printFrame = document.createElement("iframe");
         printFrame.id = "printFrame";
-        printFrame.style.position = "fixed";
+        printFrame.style.position = "absolute";
         printFrame.style.right = "0";
         printFrame.style.bottom = "0";
         printFrame.style.width = "0";
@@ -613,17 +619,51 @@ function directPrint() {
     doc.open();
     doc.write('<html><head><title>Print Invoice</title>');
 
+    // 1. Copy main styles
     document.querySelectorAll('style, link[rel="stylesheet"]').forEach(style => {
         doc.write(style.outerHTML);
     });
 
-    doc.write('</head><body style="margin:0; padding:0;">');
-    doc.write(previewContent); // <--- CHANGED HERE
+    // 2. INJECT STRICT PRINT CSS
+    doc.write(`
+        <style>
+            /* Kill browser default margins and blank pages */
+            @page { size: A4 portrait; margin: 0mm !important; }
+            
+            /* Force background images to print and allow full scrolling */
+            body { 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+                background-color: white;
+            }
+            
+            /* Lock the page to exact A4 dimensions */
+            .page { 
+                width: 210mm !important; 
+                min-height: 297mm !important; 
+                box-sizing: border-box; 
+                page-break-after: always;
+                page-break-inside: avoid;
+                overflow: hidden;
+            }
+            
+            /* Prevent the phantom blank page at the very end */
+            .page:last-child { 
+                page-break-after: auto !important; 
+            }
+        </style>
+    `);
+
+    doc.write('</head><body>');
+    doc.write(previewContent);
     doc.write('</body></html>');
     doc.close();
 
-    printFrame.contentWindow.onload = function () {
+    // 3. Give the background image 500ms to load before opening print dialog
+    setTimeout(() => {
         printFrame.contentWindow.focus();
         printFrame.contentWindow.print();
-    };
+    }, 500);
 }
