@@ -20,14 +20,14 @@ const bankData = {
     }
 };
 const branchData = {
-    "budwar.jpeg": {
+    "budwar.jpg": {
         stateName: "Uttar Pradesh",   // Added Name
         stateCode: "09",              // Added Code
         gstin: "09AMLPC5798A1ZW",
         address: "H.N.151,BUDWAR LALITPUR, UTTAR PRADESH 284403",
         phone: "9811503806, 7974184033"
     },
-    "niwari.jpeg": {
+    "niwari.jpg": {
         stateName: "Madhya Pradesh",  // Added Name
         stateCode: "23",              // Added Code
         gstin: "23AMLPC5798A1Z6",     // REMEMBER: Update this with real MP GSTIN
@@ -35,7 +35,7 @@ const branchData = {
         phone: "9811503806, 7974184033"
     }
 };
-let currentBackground = "budwar.jpeg";
+let currentBackground = "budwar.jpg";
 /* --- HELPER FUNCTIONS --- */
 function formatDate(inputDate) {
     if (!inputDate) return "";
@@ -119,10 +119,18 @@ function addItem() {
 }
 
 function render() {
+    // Grab the freshest background value
+    const bgSelect = document.getElementById("bgSelector");
+    if (bgSelect) {
+        currentBackground = bgSelect.value;
+        console.log("Currently selected background file:", currentBackground);
+    }
+
     const rows = [...document.querySelectorAll(".item-row")];
     const currentBranch = branchData[currentBackground] || branchData["budwar.jpg"];
-    const val = (id) => document.getElementById(id)?.value || "";
 
+    // 💡 ADD THIS LINE BACK IN:
+    const val = (id) => document.getElementById(id)?.value || "";
     let goodsTotal = 0;
     let totalCGST = 0, totalSGST = 0, totalIGST = 0;
 
@@ -170,8 +178,30 @@ function render() {
     blocks.push(goodsHeaderBlock);
 
     // B. Goods Rows
+    // B. Goods Rows
     processedItems.forEach(item => {
-        blocks.push({ html: `<tr><td>${item.i}</td><td class="desc">${item.desc}</td><td>${item.hsn}</td><td>${item.qty}</td><td>${item.unit}</td><td>${item.rate}</td><td>${item.amt.toFixed(2)}</td></tr>`, cost: 1, type: 'row' });
+        // 💡 SMART COST: Assume roughly 35 characters fit on one line. 
+        // If the description is 70 chars long, this row costs "2" lines of space.
+        const charLimitPerLine = 35;
+        const linesNeeded = Math.ceil((item.desc.length || 1) / charLimitPerLine);
+        const rowCost = Math.max(1, linesNeeded);
+
+        blocks.push({
+            html: `
+            <tr>
+                <td>${item.i}</td>
+                <td class="desc" style="max-width: 100px; word-wrap: break-word; white-space: normal; text-align: left; padding: 4px;">
+                    ${item.desc}
+                </td>
+                <td>${item.hsn}</td>
+                <td>${item.qty}</td>
+                <td>${item.unit}</td>
+                <td>${item.rate}</td>
+                <td>${item.amt.toFixed(2)}</td>
+            </tr>`,
+            cost: rowCost,
+            type: 'row'
+        });
     });
 
     // C. Goods Table End
@@ -185,25 +215,63 @@ function render() {
     blocks.push(gstHeaderBlock);
 
     // E. GST Rows
+    // E. GST Rows
     processedItems.forEach(item => {
-        blocks.push({ html: `<tr><td>${item.i}</td><td class="desc">${item.desc}</td><td>${item.amt.toFixed(2)}</td><td>${item.cgstP}%</td><td>${item.cgstA.toFixed(2)}</td><td>${item.sgstP}%</td><td>${item.sgstA.toFixed(2)}</td><td>${item.igstP}%</td><td>${item.igstA.toFixed(2)}</td></tr>`, cost: 1, type: 'row' });
+        // Re-calculate the cost for the GST table rows
+        const charLimitPerLine = 35;
+        const linesNeeded = Math.ceil((item.desc.length || 1) / charLimitPerLine);
+        const rowCost = Math.max(1, linesNeeded);
+
+        blocks.push({
+            html: `
+            <tr>
+                <td>${item.i}</td>
+                <td class="desc" style="max-width: 150px; word-wrap: break-word; white-space: normal; text-align: left; padding: 4px;">
+                    ${item.desc}
+                </td>
+                <td>${item.amt.toFixed(2)}</td>
+                <td>${item.cgstP}%</td>
+                <td>${item.cgstA.toFixed(2)}</td>
+                <td>${item.sgstP}%</td>
+                <td>${item.sgstA.toFixed(2)}</td>
+                <td>${item.igstP}%</td>
+                <td>${item.igstA.toFixed(2)}</td>
+            </tr>`,
+            cost: rowCost,
+            type: 'row'
+        });
     });
 
     // F. GST Table End
     blocks.push({ html: `<tr class="bold"><td colspan="4" class="right">TOTAL GST</td><td>${totalCGST.toFixed(2)}</td><td></td><td>${totalSGST.toFixed(2)}</td><td></td><td>${totalIGST.toFixed(2)}</td></tr><tr class="bold"><td colspan="8" class="right">OVERALL GST TOTAL</td><td>${overallGST.toFixed(2)}</td></tr></table>`, cost: 3, type: 'close' });
 
     // G. Final Signature Footer
+    // Grab the selected bank directly from the dropdown
+    const selectedBankKey = document.getElementById("accountSelector")?.value;
+    const currentBank = bankData[selectedBankKey] || { bank: "", acNo: "", ifsc: "", branch: "" };
+
+    // G. Final Signature Footer
+    // G. Final Signature Footer
+    // G. Final Signature Footer
     blocks.push({
         html: `
-        <div class="box bold" style="margin-top: 10px;">Amount in Words: INR ${words(grandTotal)}</div>
+        <div class="box bold" style="margin-top: 2px;">Amount in Words: INR ${words(grandTotal)}</div>
         <div class="box right bold">GRAND TOTAL ₹${grandTotal.toFixed(2)}</div>
-        <div class="row">
-            <div class="box"><b>Bank: ${val('bankName')}<br>A/C No: ${val('AccountNumber')}<br>IFSC: ${val('Ifsc')}<br>Branch: ${val('branch')}</b></div>
-            <div class="box right">For MAHADEV CONSTRUCTION<br><br><br>Authorised signature.</div>
+        
+        <div class="row" style="display: flex; flex-wrap: nowrap; width: 100%;">
+            <div class="box" style="flex: 1 1 50%; max-width: 50%; box-sizing: border-box; overflow: hidden;">
+                <b>Bank: ${currentBank.bank}<br>
+                A/C No: ${currentBank.acNo}<br>
+                IFSC: ${currentBank.ifsc}<br>
+                Branch: ${currentBank.branch}</b>
+            </div>
+            <div class="box right" style="flex: 1 1 50%; max-width: 50%; text-align: right; box-sizing: border-box; overflow: hidden;">
+                For MAHADEV CONSTRUCTION<br><br><br><br>
+                Authorised signature.
+            </div>
         </div>
     `, cost: 8, type: 'footer'
     });
-
     // --- 3. DISTRIBUTE BLOCKS INTO PAGES ---
     const MAX_COST_PER_PAGE = 28; // 💡 Change this to control how much fits on one page (higher = more items per page)
 
@@ -320,9 +388,11 @@ function render() {
 }
 /* --- EVENT LISTENERS --- */
 // 1. Listen for typing in main inputs
-document.querySelectorAll("input, textarea").forEach(e =>
-    e.addEventListener("input", render)
-);
+// 1. Listen for typing AND dropdown changes
+document.querySelectorAll("input, textarea, select").forEach(e => {
+    e.addEventListener("input", render);
+    e.addEventListener("change", render);
+});
 
 // 2. Listen for Account Selection
 if (accountSelector) {
@@ -369,13 +439,7 @@ if (downloadBtn) {
         html2pdf().set(opt).from(element).save();
     });
 }
-const bgSelector = document.getElementById("bgSelector");
-if (bgSelector) {
-    bgSelector.addEventListener("change", function () {
-        currentBackground = this.value;
-        render();
-    });
-}
+
 
 // Ensure Buyer GST Input triggers render
 document.getElementById("buyerGST").addEventListener("input", render);
