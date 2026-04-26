@@ -16,6 +16,16 @@
         <div class="panel">
 
             <h3>Invoice Input</h3>
+
+            <!-- Bill Type Selector -->
+            <div class="panel-section">
+                <label>Bill Type:</label>
+                <select id="billTypeSelector" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 2px solid #c00; font-weight: bold; background: #fff8f8;">
+                    <option value="TAX_INVOICE">🧾 Tax Invoice</option>
+                    <option value="RAILWAY_BILL">🚆 Railway Bill</option>
+                </select>
+            </div>
+
             <div class="panel-section">
                 <label>Select Letterhead (Branch):</label>
                 <select id="bgSelector" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 2px solid blue;">
@@ -27,7 +37,18 @@
             <input id="buyerName" placeholder="Buyer Name">
             <textarea id="buyerAddress" placeholder="Buyer Address"></textarea>
             <input id="StateCode2" placeholder="State And code (of Receiver)">
-            <input id="buyerGST" placeholder="Buyer GSTIN">
+            <input id="buyerGST" placeholder="Buyer GSTIN/UIN">
+
+            <!-- Railway Bill specific fields -->
+            <div id="railwayFields" style="display:none;">
+                <hr style="margin: 8px 0; border-color: #c00;">
+                <label style="font-weight:bold; color:#c00;">🚆 Railway Bill Details</label>
+                <input id="workDescription" placeholder="Work Description (e.g. Works Contract)">
+                <input id="hsnCode" placeholder="HSN/SAC Code (e.g. 995421)">
+                <input id="gstRate" type="number" placeholder="GST Rate % (e.g. 18)" min="0" max="100">
+                <input id="taxableAmount" type="number" placeholder="Taxable Amount (₹)" step="0.01">
+                <hr style="margin: 8px 0; border-color: #c00;">
+            </div>
 
             <input id="invoiceDate" type="date">
             <input id="invoiceNo" placeholder="Invoice Number">

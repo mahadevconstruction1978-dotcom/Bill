@@ -386,13 +386,265 @@ function render() {
     // Inject everything into the preview window
     preview.innerHTML = finalPreviewHTML;
 }
+
+/* ============================================================
+   RAILWAY BILL RENDERER
+   ============================================================ */
+function renderRailwayBill() {
+    const bgSelect = document.getElementById("bgSelector");
+    if (bgSelect) currentBackground = bgSelect.value;
+
+    const val = (id) => document.getElementById(id)?.value || "";
+    const currentBranch = branchData[currentBackground] || branchData["budwar.jpg"];
+    const selectedBankKey = document.getElementById("accountSelector")?.value;
+    const currentBank = bankData[selectedBankKey] || { bank: "", acNo: "", ifsc: "", branch: "" };
+
+    // --- READ RAILWAY BILL FIELDS ---
+    const buyerName     = val("buyerName");
+    const buyerAddress  = val("buyerAddress");
+    const buyerState    = val("StateCode2");
+    const buyerGST      = val("buyerGST");
+    const invoiceNo     = val("invoiceNo");
+    const invoiceDate   = formatDate(val("invoiceDate"));
+    const workDesc      = val("workDescription") || "Works Contract - Composite supply of work And Contract Supplied";
+    const hsnCode       = val("hsnCode") || "995421";
+    const gstRateVal    = parseFloat(val("gstRate")) || 0;
+    const taxableAmt    = parseFloat(val("taxableAmount")) || 0;
+
+    const cgstRate = gstRateVal / 2;
+    const sgstRate = gstRateVal / 2;
+    const cgstAmt  = taxableAmt * cgstRate / 100;
+    const sgstAmt  = taxableAmt * sgstRate / 100;
+    const grandTotal = taxableAmt + cgstAmt + sgstAmt;
+
+    // store totals for saveToDatabase compatibility
+    currentTotals.taxable   = taxableAmt;
+    currentTotals.totalGST  = cgstAmt + sgstAmt;
+    currentTotals.grandTotal = grandTotal;
+
+    // ---- Format helpers ----
+    const fmt = (n) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // ---- Build the Bill HTML ----
+    const railwayHTML = `
+    <div class="page" style="background-image: url('${currentBackground}'); background-size: cover; position: relative; min-height: 297mm; box-sizing: border-box;">
+        <!-- Thanks footer — absolute, same as normal bill -->
+        <div style="position: absolute; bottom: 70px; right: 40px; text-align: right; font-weight: bold; font-size: 16px; color: #000;">
+            Thanks<br>
+            Yours Faithfully<br>
+            Mahadev Construction
+        </div>
+        <div class="invoice">
+
+            <!-- HEADING -->
+            <div id="heading" class="center bold" style="font-size:20px; letter-spacing:1px;">TAX INVOICE</div>
+
+            <!-- SELLER / BUYER HEADER — table so borders never gap in PDF -->
+            <table style="width:100%; border-collapse:collapse; margin-top:6px;">
+                <tr>
+                    <td style="width:50%; border:1px solid #000; padding:5px; vertical-align:top;">
+                        <b>MAHADEV CONSTRUCTION</b><br>
+                        ${toUpper(currentBranch.address)}<br>
+                        <b>GSTIN</b> &nbsp;&nbsp;: ${toUpper(currentBranch.gstin)}<br>
+                        Email Id : mahadevca1978@gmail.com<br>
+                        State Name: ${toUpper(currentBranch.stateName)}, Code ${currentBranch.stateCode}<br>
+                        Phone no. : ${currentBranch.phone}
+                    </td>
+                    <td style="width:50%; border:1px solid #000; border-left:none; padding:5px; vertical-align:top;">
+                        <b>Buyer (billed to)</b><br>
+                        <b>${toUpper(buyerName)}</b><br>
+                        ${toUpper(buyerAddress)}<br>
+                        GSTIN/UIN &nbsp;: ${toUpper(buyerGST)}<br>
+                        State name &nbsp;: ${toUpper(buyerState)}<br>
+                        Place of supply : ${toUpper(buyerState)}
+                    </td>
+                </tr>
+            </table>
+
+            <!-- INVOICE NO & DATE -->
+            <table style="width:100%; border-collapse:collapse; margin-top:0;">
+                <tr>
+                    <td style="width:50%; border:1px solid #000; border-top:none; padding:5px;">
+                        Invoice No. &nbsp;<b>${invoiceNo}</b>
+                    </td>
+                    <td style="width:50%; border:1px solid #000; border-top:none; border-left:none; padding:5px; text-align:right;">
+                        Dated:- &nbsp;<b>${invoiceDate}</b>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- MAIN GOODS TABLE -->
+            <table class="table" style="margin-top:0; border-top:none;">
+                <thead>
+                    <tr>
+                        <th>S.No.</th>
+                        <th>Description of Services</th>
+                        <th>HSN/SAC</th>
+                        <th>QUANTITY</th>
+                        <th>RATE</th>
+                        <th>PER</th>
+                        <th>AMOUNT</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td class="desc" style="text-align:left; padding:6px;">${workDesc}</td>
+                        <td>${hsnCode}</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td style="text-align:right;"><b>${fmt(taxableAmt)}/-</b></td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td class="desc" style="text-align:center; font-weight:bold; padding:6px;">Output CGST</td>
+                        <td></td>
+                        <td></td>
+                        <td style="text-align:center;">${cgstRate}</td>
+                        <td style="text-align:center;">%</td>
+                        <td style="text-align:right;">${fmt(cgstAmt)}/-</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td class="desc" style="text-align:center; font-weight:bold; padding:6px;">Output SGST</td>
+                        <td></td>
+                        <td></td>
+                        <td style="text-align:center;">${sgstRate}</td>
+                        <td style="text-align:center;">%</td>
+                        <td style="text-align:right;">${fmt(sgstAmt)}/-</td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr class="bold">
+                        <td colspan="6" style="text-align:right;">Total</td>
+                        <td style="text-align:right;">${fmt(grandTotal)}</td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <!-- AMOUNT IN WORDS -->
+            <table style="width:100%; border-collapse:collapse; margin-top:0;">
+                <tr>
+                    <td style="border:1px solid #000; border-top:none; padding:5px; font-weight:bold; font-size:11px;">
+                        Amount Chargeable (in words)&nbsp;&nbsp;
+                        <span style="float:right;">E. &amp; O.E</span><br>
+                        INR ${words(grandTotal)}
+                    </td>
+                </tr>
+            </table>
+
+            <!-- GST SUMMARY TABLE -->
+            <table class="table" style="margin-top:0; border-top:none;">
+                <thead>
+                    <tr style="background:#f0f0f0;">
+                        <th rowspan="2" style="vertical-align:middle;">Taxable<br>Value</th>
+                        <th colspan="2">CGST</th>
+                        <th colspan="2">SGST</th>
+                        <th rowspan="2" style="vertical-align:middle;">Total<br>Tax Amount</th>
+                    </tr>
+                    <tr style="background:#f0f0f0;">
+                        <th>Rate</th><th>Amount</th>
+                        <th>Rate</th><th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="text-align:right;">${fmt(taxableAmt)}/-</td>
+                        <td style="text-align:center;">${cgstRate}%</td>
+                        <td style="text-align:right;">${fmt(cgstAmt)}/-</td>
+                        <td style="text-align:center;">${sgstRate}%</td>
+                        <td style="text-align:right;">${fmt(sgstAmt)}/-</td>
+                        <td style="text-align:right;">${fmt(cgstAmt + sgstAmt)}/-</td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr class="bold">
+                        <td style="text-align:right;">Total: ${fmt(taxableAmt)}/-</td>
+                        <td style="text-align:center;">${cgstRate}%</td>
+                        <td style="text-align:right;">${fmt(cgstAmt)}/-</td>
+                        <td style="text-align:center;">${sgstRate}%</td>
+                        <td style="text-align:right;">${fmt(sgstAmt)}/-</td>
+                        <td style="text-align:right;">${fmt(cgstAmt + sgstAmt)}/-</td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <!-- TOTAL IN WORDS -->
+            <table style="width:100%; border-collapse:collapse; margin-top:0;">
+                <tr>
+                    <td style="border:1px solid #000; border-top:none; padding:5px; font-weight:bold; font-size:11px;">
+                        Total amount (in words):- &nbsp; INR ${words(cgstAmt + sgstAmt)}
+                    </td>
+                </tr>
+            </table>
+
+            <!-- BANK + SIGNATURE SECTION -->
+            <table style="width:100%; border-collapse:collapse; margin-top:0;">
+                <tr>
+                    <td style="width:50%; border:1px solid #000; border-top:none; padding:5px; vertical-align:top;">
+                        <b>Company's Bank Details</b><br>
+                        A/c Holders Name : <b>MAHADEV CONSTRUCTION</b><br>
+                        Bank Name &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${currentBank.bank || "—"}<br>
+                        A/c No. &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${currentBank.acNo || "—"}<br>
+                        IFSC Code &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${currentBank.ifsc || "—"}<br>
+                        Branch &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${currentBank.branch || "—"}
+                    </td>
+                    <td style="width:50%; border:1px solid #000; border-top:none; border-left:none; padding:5px; text-align:right; vertical-align:top;">
+                        For MAHADEV CONSTRUCTION<br><br><br><br>
+                        Authorised signature
+                    </td>
+                </tr>
+            </table>
+
+            <!-- PAN & DECLARATION -->
+            <table style="width:100%; border-collapse:collapse; margin-top:0;">
+                <tr>
+                    <td style="border:1px solid #000; border-top:none; padding:5px; font-size:10px;">
+                        Company's PAN : <b>AMLPC5798A</b><br>
+                        <b>Declaration:</b><br>
+                        We declare that this invoice shows the actual price of the goods described
+                        and that all particular are true and correct
+                    </td>
+                </tr>
+            </table>
+
+        </div>
+    </div>`;
+
+    preview.innerHTML = railwayHTML;
+}
+
 /* --- EVENT LISTENERS --- */
-// 1. Listen for typing in main inputs
-// 1. Listen for typing AND dropdown changes
+// 1. Listen for typing AND dropdown changes (re-render on any change)
 document.querySelectorAll("input, textarea, select").forEach(e => {
-    e.addEventListener("input", render);
-    e.addEventListener("change", render);
+    e.addEventListener("input", masterRender);
+    e.addEventListener("change", masterRender);
 });
+
+// Bill Type Toggle: show/hide railway fields
+const billTypeSelector = document.getElementById("billTypeSelector");
+if (billTypeSelector) {
+    billTypeSelector.addEventListener("change", function () {
+        const isRailway = this.value === "RAILWAY_BILL";
+        document.getElementById("railwayFields").style.display = isRailway ? "block" : "none";
+        // The items section is not needed for railway bill
+        document.getElementById("items").style.display = isRailway ? "none" : "block";
+        document.getElementById("addItem").style.display = isRailway ? "none" : "block";
+        masterRender();
+    });
+}
+
+// Master render dispatcher — picks the right renderer based on bill type
+function masterRender() {
+    const billType = document.getElementById("billTypeSelector")?.value || "TAX_INVOICE";
+    if (billType === "RAILWAY_BILL") {
+        renderRailwayBill();
+    } else {
+        render();
+    }
+}
+
 
 // 2. Listen for Account Selection
 if (accountSelector) {
@@ -414,7 +666,7 @@ if (accountSelector) {
             bIfsc.value = "";
             bBranch.value = "";
         }
-        render();
+        masterRender();
     });
 }
 
@@ -448,11 +700,11 @@ if (downloadBtn) {
 
 
 // Ensure Buyer GST Input triggers render
-document.getElementById("buyerGST").addEventListener("input", render);
+document.getElementById("buyerGST").addEventListener("input", masterRender);
 /* --- INITIALIZE --- */
 addBtn.onclick = addItem;
 addItem(); // Add first empty row
-render();  // Initial render
+masterRender();  // Initial render
 /* --- DASHBOARD LOGIC (Update this section) --- */
 const viewBranchSelector = document.getElementById("viewBranchSelector");
 const billsTableBody = document.querySelector("#billsTable tbody");
@@ -507,68 +759,92 @@ async function saveToDatabase() {
     loader.style.display = "flex";
 
     try {
-        // 1. GET TOTALS DIRECTLY FROM GLOBAL VARIABLE (No Calculation!)
+        // 1. GET TOTALS FROM GLOBAL (already computed by the active renderer)
         const { taxable, totalGST, grandTotal } = currentTotals;
 
-        // 2. PREPARE ITEMS DATA (Only structure, no math needed for totals)
-        const rows = [...document.querySelectorAll(".item-row")];
+        const billType = document.getElementById("billTypeSelector")?.value || "TAX_INVOICE";
+        const sellerBranch = document.getElementById('bgSelector').value;
+        const currentBranch = branchData[sellerBranch] || branchData["budwar.jpg"];
 
-        const currentBranch = branchData[document.getElementById('bgSelector').value] || branchData["budwar.jpg"];
-        const buyerGSTVal = document.getElementById("buyerGST").value.trim();
-        const buyerStateCode = buyerGSTVal.substring(0, 2);
-        const isLocal = (buyerStateCode === currentBranch.stateCode) && (buyerStateCode.length === 2);
+        let itemsData = [];
 
-        const itemsData = rows.map(r => {
-            const inputs = r.querySelectorAll("input");
-            const unitSelect = r.querySelector(".unit-select");
-            const gstSelect = r.querySelector(".gst-select");
+        if (billType === "RAILWAY_BILL") {
+            // --- RAILWAY BILL: single synthesised item row ---
+            const gstRateVal = parseFloat(document.getElementById("gstRate").value) || 0;
+            const taxableAmt = parseFloat(document.getElementById("taxableAmount").value) || 0;
+            const cgstRate   = gstRateVal / 2;
+            const sgstRate   = gstRateVal / 2;
 
-            const qty = parseFloat(inputs[2].value) || 0;
-            const rate = parseFloat(inputs[3].value) || 0;
-            const gstPercent = parseFloat(gstSelect ? gstSelect.value : 0) || 0;
-            const taxableAmt = qty * rate;
+            itemsData = [{
+                desc:   document.getElementById("workDescription").value || "Works Contract",
+                hsn:    document.getElementById("hsnCode").value || "995421",
+                qty:    1,
+                unit:   "LS",
+                rate:   taxableAmt,
+                amount: taxableAmt,
+                cgst:   cgstRate,
+                sgst:   sgstRate,
+                igst:   0
+            }];
+        } else {
+            // --- TAX INVOICE: read item rows as before ---
+            const rows = [...document.querySelectorAll(".item-row")];
+            const buyerGSTVal  = document.getElementById("buyerGST").value.trim();
+            const buyerStateCode = buyerGSTVal.substring(0, 2);
+            const isLocal = (buyerStateCode === currentBranch.stateCode) && (buyerStateCode.length === 2);
 
-            // Simple split logic just for the item record
-            let cgstRate = 0, sgstRate = 0, igstRate = 0;
-            if (isLocal) {
-                cgstRate = gstPercent / 2;
-                sgstRate = gstPercent / 2;
-            } else {
-                igstRate = gstPercent;
-            }
+            itemsData = rows.map(r => {
+                const inputs    = r.querySelectorAll("input");
+                const unitSelect = r.querySelector(".unit-select");
+                const gstSelect  = r.querySelector(".gst-select");
 
-            return {
-                desc: inputs[0].value,
-                hsn: inputs[1].value,
-                qty: qty,
-                unit: unitSelect ? unitSelect.value : "",
-                rate: rate,
-                amount: taxableAmt, // Item Taxable Value
-                cgst: cgstRate,
-                sgst: sgstRate,
-                igst: igstRate
-            };
-        });
+                const qty        = parseFloat(inputs[2].value) || 0;
+                const rate       = parseFloat(inputs[3].value) || 0;
+                const gstPercent = parseFloat(gstSelect ? gstSelect.value : 0) || 0;
+                const taxableAmt = qty * rate;
 
-        // 3. PREPARE PAYLOAD
+                let cgstRate = 0, sgstRate = 0, igstRate = 0;
+                if (isLocal) {
+                    cgstRate = gstPercent / 2;
+                    sgstRate = gstPercent / 2;
+                } else {
+                    igstRate = gstPercent;
+                }
+
+                return {
+                    desc:   inputs[0].value,
+                    hsn:    inputs[1].value,
+                    qty,
+                    unit:   unitSelect ? unitSelect.value : "",
+                    rate,
+                    amount: taxableAmt,
+                    cgst:   cgstRate,
+                    sgst:   sgstRate,
+                    igst:   igstRate
+                };
+            });
+        }
+
+        // 2. BUILD PAYLOAD
         const payload = {
-            invoiceNo: document.getElementById('invoiceNo').value,
-            invoiceDate: document.getElementById('invoiceDate').value,
-            sellerBranch: document.getElementById('bgSelector').value,
-            buyerName: document.getElementById('buyerName').value,
-            buyerGST: document.getElementById('buyerGST').value,
-            buyerAddress: document.getElementById('buyerAddress').value,
-            buyerState: document.getElementById('StateCode2').value,
+            invoiceNo:      document.getElementById('invoiceNo').value,
+            invoiceDate:    document.getElementById('invoiceDate').value,
+            sellerBranch,
+            buyerName:      document.getElementById('buyerName').value,
+            buyerGST:       document.getElementById('buyerGST').value,
+            buyerAddress:   document.getElementById('buyerAddress').value,
+            buyerState:     document.getElementById('StateCode2').value,
+            billType,
 
-            // DIRECTLY USING THE GLOBALS
-            taxableAmount: parseFloat(taxable.toFixed(2)),
-            totalGST: parseFloat(totalGST.toFixed(2)),
-            grandTotal: parseFloat(grandTotal.toFixed(2)),
+            // Totals from the global (set by the active renderer)
+            taxableAmount:  parseFloat(taxable.toFixed(2)),
+            totalGST:       parseFloat(totalGST.toFixed(2)),
+            grandTotal:     parseFloat(grandTotal.toFixed(2)),
 
             items: itemsData
         };
 
-        // 4. SEND TO SERVER
+        // 3. SEND TO SERVER
         const res = await fetch('https://backrnd-8n8g.onrender.com/api/save-invoice', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -580,7 +856,6 @@ async function saveToDatabase() {
 
         if (data.success) {
             alert("Saved Successfully!");
-            // Refresh view if needed
             const viewBranchSelector = document.getElementById("viewBranchSelector");
             if (viewBranchSelector && viewBranchSelector.value === payload.sellerBranch) {
                 viewBranchSelector.dispatchEvent(new Event('change'));
